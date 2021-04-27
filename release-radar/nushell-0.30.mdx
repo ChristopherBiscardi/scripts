@@ -1,0 +1,121 @@
+# nushell 0.30
+
+# Welcome back to Release Radar, I'm Chris Biscardi and today we've got Nushell 0.30.
+
+Nushell is a replacement for bash, zsh, fish, or whatever other shell you're using. I've been using it exclusively for about a week now on top of the Alacritty terminal emulator and the quickest elevator pitch I can give is the output for `ls`
+
+```
+❯ ls
+───┬────────────────────────────┬──────┬──────┬──────────────
+ # │            name            │ type │ size │   modified
+───┼────────────────────────────┼──────┼──────┼──────────────
+ 0 │ 001-cognito-quickstart     │ Dir  │ 96 B │ 18 hours ago
+ 1 │ xxx-aws-toolkit-for-vscode │ Dir  │ 96 B │ 14 hours ago
+───┴────────────────────────────┴──────┴──────┴──────────────
+```
+
+As you can see we get back a table, which is the main advantage of nushell: structured data. If we want to sort the table by a field can operate on that structured data to choose a column to sort by.
+
+```nushell
+ls | sort-by size
+```
+
+compare this to how you'd do it in bash or zsh which requires support in `ls` for sizes, human readable output, and sorting by size.
+
+```bash
+ls -lhSr
+```
+
+Which brings us to what changed in 0.30.
+
+The biggest change here seems to be performance related.
+
+```nushell
+echo "echo 1..10000000 | prepend 777 | append 555 | where $it > 7 | length" | save mytest.nu
+```
+
+```nushell
+time nu mytest.nu
+```
+
+## Math sqrt
+
+`math sqrt` does exactly what it says on the tin.
+
+```nushell
+echo 400 | math sqrt
+```
+
+We're going to skip any? and all? for the moment to talk about paths.
+
+## path
+
+The introduction of paths as a structured datatype is in this release. To get the path we're currently at we can use the classic `pwd`, or "present working directory".
+
+```nushell
+pwd
+```
+
+The new additions `split` and `parse` give us structured data, a list and a table respectively.
+
+
+```nushell
+pwd | path split
+pwd | path parse
+```
+
+This allows us to get pieces of the path such as the parent in scripts.
+
+```nushell
+pwd | path parse | get parent
+```
+
+## any? and all?
+
+That leads us to any and all which let us test items in a list or row.
+
+```nushell
+pwd | path split | any? $it == github
+pwd | path split | all? $it == github
+```
+
+-------
+-------
+-------
+## Querying JSON
+
+In my normal zsh environment I'm used to using `jq` to process JSON values. For example, a common script I run is to grab the scripts section out of a package.json.
+
+```shell
+js '.scripts' package.json
+```
+
+This dumps the json object into the terminal, which is usually good enough for me, so let's check out what nushell's experimental json querying can do.
+
+```nushell
+open --raw package.json | query json scripts
+```
+
+The output is a little awkward but very consistent with what I know of nushell. We get a table and since the `scripts` key in a `package.json` is an object, that turns into a table where the keys are the column names and the values are row 0.
+
+We can get it to output json using a different viewer. By default nushell uses `autoviewer` implicitly, but by adding `to json` we can output json. We'll also pretty-print the json output with 2 spaces.
+
+```nushell
+open --raw package.json | query json scripts | to json --pretty 2
+```
+
+Interestingly we can also integrate jq with nushell using `from json` so we're not forced to choose one or the other. 
+
+```
+jq '.scripts' package.json | from json
+```
+
+I like the integration of querying with the rest of the shell pipelines but I'm not sure it will win out over jq for me for one-offs.
+
+> One thing I don't like about my implementation is that you have to use open --raw. If someone wants to fix that, I'd be happy. :)
+
+## Breaking changes
+
+There are some breaking changes, the most interesting of which 
+
+
