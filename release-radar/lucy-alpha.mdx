@@ -1,0 +1,70 @@
+# Welcome back to Release Radar, I'm Chris Biscardi and today we're looking at the alpha release of Lucy.
+
+Lucy is a new DSL (domain-specific language) for describing Finite State Machines and Statecharts. It compiles to JavaScript using XState.
+
+There are two big pieces of this explanation to understand: what a DSL is and what finite state machines are.
+
+* What is a DSL?
+
+A DSL is a domain specific language. This is in constrast to general purpose languages like Rust, JavaScript, Python, etc. While you can do pretty much anything in a general purpose language, actually doing that thing may feel unergonomic or be prone to errors. A domain specific language is able to use stricter compilers and custom syntax because it applies to specific use cases.
+
+Other examples of DSLs are Protocol Buffers and SQL.
+
+In this case, the DSL Lucy provides is defining finite state machines in a way that is can compile to JavaScript code that is compatible with the xstate JavaScript library.
+
+* What are finite state machines?
+
+When developing an application it's common to have different pieces be in different states. Sometimes we cobble together these states without defining them and end up with objects that can hold data from older states, or transition into new states that we shouldn't be able to get into from our current state. Finite state machines are a way of defining what states there are and what states you can get to next.
+
+https://xstate.js.org/viz/?gist=bbcb4379b36edea0458f597e5eec2f91
+
+In this visual example we're showing the states and transitions for an API request. The boxes represent states the request can be in and the arrows represent which actions can send us to specific next states.
+
+For example, when we initiate the fetch to the API, we go into the loading state which invokes the http request while we wait. When it returns it will either fire the done or error actions, sending us to either the resolved or rejected states.
+
+xstate is a library for defining these state machines in JavaScript, while Lucy is a custom DSL for defining them that compiles to the xstate representation.
+
+```
+curl -sSf https://lucylang.org/install.sh | bash
+```
+
+## Installation
+
+When installing, it's important to note that lucy has chosen `lc` as the name for it's binary, and that a binary called `lc` already exists on macs and linux which is the Mono License Compiler. Due to this I'll be aliasing the binary to `lucy`.
+
+There are other integrations, such as vite and rollup, but we'll be keeping ourselves to the binary today to focus on lucy and not integration. Speaking of the binary, it turns out the entire project is written in C and compiled to WASM. This is a really interesting architecural choice and reflects the general move in JavaScript tooling from JS implementations to compiled languages like Rust and Golang.
+
+I only have a couple of .lucy files in this directory but running the binary on the entire directory executes extremely quickly. This is how we've compiled the Lucy DSL to .js files we can use in our project.
+
+## toggle-machine.lucy
+
+The DSL itself is pretty readable IMO. We get keywords to create machines with names and keywords to declare states as well. In this case we've got a toggleMachine machine with two states named on and off... like a toggle button. `toggle` is a transition that can happen, so if we're in the on state and a toggle happens, we go to the off state and vice versa.
+
+When we check out the JS file, we can see that XState's `createMachine` gets imported and used to create the toggleMachine export.
+
+The contents of the machine are a little more confusing to read, but only because we've decided to use "on" as a state name, which means declaring what happens when we're in a certain state and the transition is called is a bit awkward to read. Overall I'm pretty happy with the DSL-to-JS conversion. I find both readable but the DSL definitely wins when it comes to removing that extra object boilerplate.
+
+## use-api.lucy
+
+You may be wondering, as I did, how does this works when integrating with existing javascript code. I'm used to writing my xstate machines by hand which is pretty verbose but I also get access to all of JavaScript to do it and xstate has a fairly expansive API surface.
+
+One major design decision here is that basically all of that logic now needs to be used as an import in your machines. I'm not terribly upset at this decision and think it could lead to more understandable state machine files.
+
+The imports are a custom import style, which is fine but I do wonder if there are going to be either more targets or compatibility with libraries other than xstate to justify the change.
+
+We get to declare multiple machines per file, so here we have two of them along with the deleteTodo import. 
+
+The todoItem machine has three states including some new syntax for a final state. Also notice the call to invoke, which means when we enter the delete state, we'll run `deleteTodo`, and when it's done, transition to the deleted state.
+
+the app machine is where we get to see a bit of the fancier usage and calls to xstate apis you might be familiar with if you've worked with it before.
+
+Our app is only ever in the idle state. When a new todo event comes in, we assign the context.todo value to a spawned todoItem machine. Learning the ins and outs of these specific syntaxes is going to be the major goal for deep lucy usage as far as I can tell. For example, we can only call spawn within assign.
+
+When a delete event comes in, we send a delete event to the todo machine, which was stored in context. That event will transition the todoItem machine into the deleting state.
+
+
+## Etc
+
+I'm not going to talk about everything, especially since Lucy is still in an alpha state and different facets could still change before stable release. For example, there's syntax for an implicit machine file that I couldn't get to compile via the binary.
+
+There are a few worthy notes though. One is that *delay* is a built-in as well as the fact that a VSCode extension already exists to highlight the .lucy files, which is a nice touch that I think really makes the alpha feel polished.

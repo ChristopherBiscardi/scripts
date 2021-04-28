@@ -1,0 +1,6 @@
+state idle {
+  click => next
+}
+
+state next {}
+

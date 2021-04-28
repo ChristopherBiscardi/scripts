@@ -1,0 +1,20 @@
+use './api' { deleteTodo }
+
+machine todoItem {
+  state idle {
+    delete => deleting
+  }
+  state deleting {
+    invoke deleteTodo {
+      done => deleted
+    }
+  }
+  final state deleted {}
+}
+
+machine app {
+  state idle {
+    new => assign(todo, spawn(todoItem))
+    delete => send(todo, delete)
+  }
+}

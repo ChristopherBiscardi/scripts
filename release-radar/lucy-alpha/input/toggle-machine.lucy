@@ -1,0 +1,9 @@
+machine toggleMachine {
+  state on {
+    toggle => off
+  }
+
+  state off {
+    toggle => on
+  }
+}
